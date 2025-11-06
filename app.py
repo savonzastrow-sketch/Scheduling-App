@@ -42,7 +42,7 @@ st.markdown("""
 st.markdown("<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
 
 
-st.markdown(f"**Event date:** {EVENT_DATE_STR}")
+st.markdown(f"**Our Next Date:** {EVENT_DATE_STR}")
 st.write("Thanks for visiting our New Albany Mahjong scheduling app. Please just tell us your name, select yes or no if you can make it and press submit. If your plans change, you can log back in and change your selection.")
 
 # Ensure data dir exists

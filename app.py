@@ -141,7 +141,7 @@ else:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("✅ Available")
+        st.subheader("<h1>✅ Available<h1>")
         if not available_df.empty:
             for _, row in available_df.iterrows():
                 t = pd.to_datetime(row["timestamp"]).astimezone(TIMEZONE).strftime("%Y-%m-%d %I:%M %p")

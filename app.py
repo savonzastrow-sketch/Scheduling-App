@@ -26,6 +26,11 @@ st.markdown("""
         font-size: 32px !important;
         text-align: center;
     }
+    h2 {
+        font-size: 32px !important;       /* Same as h1 */
+        text-align: center;               /* Optional: center it too */
+        margin-top: 1.5em;                /* Add some breathing room */
+    }
     p, div, label, .stMarkdown {
         font-size: 18px !important;
         line-height: 1.6;
@@ -141,7 +146,7 @@ else:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("<h1>✅ Available<h1>")
+        st.subheader("✅ Available")
         if not available_df.empty:
             for _, row in available_df.iterrows():
                 t = pd.to_datetime(row["timestamp"]).astimezone(TIMEZONE).strftime("%Y-%m-%d %I:%M %p")

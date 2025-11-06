@@ -21,7 +21,7 @@ st.set_page_config(page_title="Simple Scheduling", layout="centered")
 st.title("🀄 Mahjong - Sign-up")
 
 st.markdown(f"**Event date:** {EVENT_DATE_STR}")
-st.write("Thanks for visiting our scheduling app. Please just tell us your name, select yes or no if you can make it and press select.")
+st.write("Thanks for visiting our scheduling app. Please just tell us your name, select yes or no if you can make it and press submit. If your plans change, you can log back in and change your selection.")
 
 # Ensure data dir exists
 DATA_DIR.mkdir(exist_ok=True)

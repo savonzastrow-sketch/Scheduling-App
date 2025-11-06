@@ -18,7 +18,7 @@ TIMEZONE = ZoneInfo("America/New_York")
 # -----------------------
 
 st.set_page_config(page_title="Simple Scheduling", layout="centered")
-st.title("🎮 Game Night - Sign-up")
+st.title("🎮 Mahjong - Sign-up")
 
 st.markdown(f"**Event date:** {EVENT_DATE_STR}")
 st.write("No login — just tell us your name and whether you can make it.")

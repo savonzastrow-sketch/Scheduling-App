@@ -150,7 +150,7 @@ else:
         if not available_df.empty:
             for _, row in available_df.iterrows():
                 t = pd.to_datetime(row["timestamp"]).astimezone(TIMEZONE).strftime("%Y-%m-%d %I:%M %p")
-                st.write(f"- **{row['name']}** (signed: {t})")
+                st.write(f"- **{row['name']}**)
         else:
             st.write("_No one available yet_")
 

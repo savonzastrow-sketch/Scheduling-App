@@ -40,7 +40,7 @@ st.markdown("""
 
 # 🀄 Title and intro text
 st.markdown("<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
-st.markdown("<p>Welcome! Please enter your name and let us know if you can join.</p>", unsafe_allow_html=True)
+
 
 st.markdown(f"**Event date:** {EVENT_DATE_STR}")
 st.write("Thanks for visiting our scheduling app. Please just tell us your name, select yes or no if you can make it and press submit. If your plans change, you can log back in and change your selection.")

@@ -17,8 +17,25 @@ DATA_FILE = DATA_DIR / "availability.csv"
 TIMEZONE = ZoneInfo("America/New_York")
 # -----------------------
 
-st.set_page_config(page_title="Simple Scheduling", layout="centered")
-st.title("🀄 Mahjong - Sign-up")
+st.set_page_config(page_title="Mahjong - Sign-up", layout="centered")
+
+# 💅 Custom global font styles
+st.markdown("""
+    <style>
+    h1 {
+        font-size: 32px !important;
+        text-align: center;
+    }
+    p, div, label, .stMarkdown {
+        font-size: 18px !important;
+        line-height: 1.6;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 🀄 Title and intro text
+st.markdown("<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
+st.markdown("<p>Welcome! Please enter your name and let us know if you can join.</p>", unsafe_allow_html=True)
 
 st.markdown(f"**Event date:** {EVENT_DATE_STR}")
 st.write("Thanks for visiting our scheduling app. Please just tell us your name, select yes or no if you can make it and press submit. If your plans change, you can log back in and change your selection.")

@@ -164,4 +164,4 @@ else:
             st.write("_No one unavailable yet_")
 
 st.write("---")
-st.caption("Tip: If you want to change the hard-coded date, edit EVENT_DATE_STR and EVENT_INTERNAL_DATE at the top of app.py.")
+

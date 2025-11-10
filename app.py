@@ -11,16 +11,23 @@ TIMEZONE = ZoneInfo("America/New_York")
 DATA_DIR = Path("data")
 DATA_FILE = DATA_DIR / "availability.csv"
 EVENT_FILE = DATA_DIR / "event_date.txt"
+EVENT_LOCATION_FILE = DATA_DIR / "event_location.txt"
 DATA_DIR.mkdir(exist_ok=True)
 
 # -----------------------
-# Load or initialize event date
+# Load or initialize event date & location
 # -----------------------
 if EVENT_FILE.exists():
     EVENT_DATE_STR = EVENT_FILE.read_text().strip()
 else:
     EVENT_DATE_STR = "Friday, November 14, 2025"
     EVENT_FILE.write_text(EVENT_DATE_STR)
+
+if EVENT_LOCATION_FILE.exists():
+    EVENT_LOCATION = EVENT_LOCATION_FILE.read_text().strip()
+else:
+    EVENT_LOCATION = "TBD"
+    EVENT_LOCATION_FILE.write_text(EVENT_LOCATION)
 
 # -----------------------
 # PAGE SETUP
@@ -62,6 +69,7 @@ if selected_tab == "📋 Sign-up":
     # --- SIGN-UP PAGE ---
     st.markdown(f"<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
     st.markdown(f"<p>Event date: <b>{EVENT_DATE_STR}</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p>Event location: <b>{EVENT_LOCATION}</b></p>", unsafe_allow_html=True)
     st.write("Please enter your name and let us know if you can play.")
 
     # Load data
@@ -128,6 +136,13 @@ elif selected_tab == "🔒 Admin":
             EVENT_FILE.write_text(pretty_date)
             st.success(f"Event date updated to {pretty_date}")
 
+        # Change event location
+        st.subheader("📍 Change Event Location")
+        new_location = st.text_input("Enter new event location", value=EVENT_LOCATION)
+        if st.button("Save New Location"):
+            EVENT_LOCATION_FILE.write_text(new_location.strip())
+            st.success(f"Event location updated to {new_location}")
+        
         # Reset signups
         st.subheader("🧹 Reset Sign-ups")
         if st.button("Clear all sign-ups"):

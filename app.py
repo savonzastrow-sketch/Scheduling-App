@@ -78,19 +78,22 @@ with tab1:
 
     # Display results
     st.header("Sign-ups")
+
     available_df = df[df["available"] == True]
     unavailable_df = df[df["available"] == False]
 
     col1, col2 = st.columns(2)
+
     with col1:
-        st.subheader("✅ Available")
+        st.markdown("<h3 style='font-size:22px; text-align:center;'>😄 Available</h3>", unsafe_allow_html=True)
         for n in available_df["name"]:
             st.write(f"- **{n}**")
 
     with col2:
-        st.subheader("❌ Not available")
+        st.markdown("<h3 style='font-size:22px; text-align:center;'>🙁 Not available</h3>", unsafe_allow_html=True)
         for n in unavailable_df["name"]:
             st.write(f"- **{n}**")
+
 
 # =====================================================
 # TAB 2 — ADMIN PAGE

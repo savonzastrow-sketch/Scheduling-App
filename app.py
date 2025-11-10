@@ -1,165 +1,118 @@
-# app.py - Simple scheduling app (hard-coded date, CSV storage)
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date
 from zoneinfo import ZoneInfo
-import tempfile
-import os
 
 # -----------------------
-# CONFIG  - tweak here
+# CONFIG
 # -----------------------
-EVENT_DATE_STR = "Friday, November 14, 2025"   # change this to your event date display
-EVENT_INTERNAL_DATE = "2025-11-14"             # change this to the YYYY-MM-DD for stored date
+TIMEZONE = ZoneInfo("America/New_York")
 DATA_DIR = Path("data")
 DATA_FILE = DATA_DIR / "availability.csv"
-TIMEZONE = ZoneInfo("America/New_York")
-# -----------------------
-
-st.set_page_config(page_title="Mahjong - Sign-up", layout="centered")
-
-# 💅 Custom global font styles
-st.markdown("""
-    <style>
-    h1 {
-        font-size: 32px !important;
-        text-align: center;
-    }
-    h2 {
-        font-size: 32px !important;       /* Same as h1 */
-        text-align: center;               /* Optional: center it too */
-        margin-top: 1.5em;                /* Add some breathing room */
-    }
-    p, div, label, .stMarkdown {
-        font-size: 18px !important;
-        line-height: 1.6;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# 🀄 Title and intro text
-st.markdown("<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
-
-
-st.markdown(f"**Our Next Date:** {EVENT_DATE_STR}")
-st.write("Thanks for visiting our New Albany Mahjong scheduling app. Please just tell us your name, select yes or no if you can make it and press submit. If your plans change, you can click back on the link and change your selection.")
-
-# Ensure data dir exists
+EVENT_FILE = DATA_DIR / "event_date.txt"
 DATA_DIR.mkdir(exist_ok=True)
 
-# Initialize session state flags to avoid double writes
-if "submitted" not in st.session_state:
-    st.session_state.submitted = False
-
-# Helper: read csv (returns DataFrame)
-def read_data():
-    if DATA_FILE.exists():
-        try:
-            df = pd.read_csv(DATA_FILE, parse_dates=["timestamp"])
-            return df
-        except Exception:
-            # If file exists but corrupted, return empty
-            return pd.DataFrame(columns=["date", "name", "available", "timestamp"])
-    else:
-        return pd.DataFrame(columns=["date", "name", "available", "timestamp"])
-
-# Helper: safe atomic write
-def atomic_write(df: pd.DataFrame, path: Path):
-    # write to temp file then replace
-    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent))
-    os.close(fd)
-    try:
-        df.to_csv(tmp_path, index=False)
-        os.replace(tmp_path, path)  # atomic on most OSes
-    except Exception as e:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        raise e
-
-# When user submits, append / dedup and save
-def submit_response(name: str, available: bool):
-    # normalize name
-    name = (name or "").strip()
-    if not name:
-        st.error("Please enter your name.")
-        return
-
-    df = read_data()
-
-    # create new row
-    ts = datetime.now(TIMEZONE)
-    new_row = {
-        "date": EVENT_INTERNAL_DATE,
-        "name": name,
-        "available": bool(available),
-        "timestamp": ts.isoformat()
-    }
-
-    # append
-    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-
-    # Deduplicate: keep the latest entry per (date, name) by timestamp
-    if not df.empty:
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
-        df = df.sort_values("timestamp").drop_duplicates(subset=["date", "name"], keep="last")
-
-    # Save atomically
-    try:
-        atomic_write(df, DATA_FILE)
-        st.session_state.submitted = True
-        st.success("Thanks — your response has been recorded.")
-    except Exception as e:
-        st.error(f"Failed to save response: {e}")
-
 # -----------------------
-# UI: form
+# Load or initialize event date
 # -----------------------
-with st.form("availability_form", clear_on_submit=False):
-    name = st.text_input("Your name")
-    avail = st.radio("Are you available to play on the event date?", ("Yes", "No"))
-    submitted = st.form_submit_button("Submit")
-
-    if submitted:
-        # Prevent double-submit in same session
-        if st.session_state.submitted:
-            st.warning("You've already submitted in this session. Reload the page to submit again.")
-        else:
-            submit_response(name, avail == "Yes")
-
-st.write("---")
-st.header("Sign-ups")
-
-# Load and show
-df_all = read_data()
-# Filter for current hard-coded date
-df = df_all[df_all["date"] == EVENT_INTERNAL_DATE].copy()
-if df.empty:
-    st.info("No one has signed up yet. Be the first!")
+if EVENT_FILE.exists():
+    EVENT_DATE_STR = EVENT_FILE.read_text().strip()
 else:
-    # Convert available to boolean if stored as string
-    if df["available"].dtype == object:
-        df["available"] = df["available"].map({"True": True, "False": False}).fillna(df["available"])
+    EVENT_DATE_STR = "Friday, November 14, 2025"
+    EVENT_FILE.write_text(EVENT_DATE_STR)
 
-    available_df = df[df["available"] == True].sort_values("timestamp")
-    unavailable_df = df[df["available"] == False].sort_values("timestamp")
+# -----------------------
+# PAGE SETUP
+# -----------------------
+st.set_page_config(page_title="🀄 Mahjong Sign-up", layout="centered")
+
+# -----------------------
+# STYLES
+# -----------------------
+st.markdown("""
+    <style>
+    h1 { font-size: 32px !important; text-align: center; }
+    h2 { font-size: 28px !important; text-align: center; }
+    p, div, label, .stMarkdown { font-size: 18px !important; line-height: 1.6; }
+    </style>
+""", unsafe_allow_html=True)
+
+# -----------------------
+# MAIN APP TABS
+# -----------------------
+tab1, tab2 = st.tabs(["📋 Sign-up", "🔒 Admin"])
+
+# =====================================================
+# TAB 1 — SIGN-UP PAGE
+# =====================================================
+with tab1:
+    st.markdown(f"<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p>Event date: <b>{EVENT_DATE_STR}</b></p>", unsafe_allow_html=True)
+    st.write("Please enter your name and let us know if you can play.")
+
+    # Load data
+    if DATA_FILE.exists():
+        df = pd.read_csv(DATA_FILE)
+    else:
+        df = pd.DataFrame(columns=["timestamp", "name", "available"])
+
+    # Form
+    name = st.text_input("Your name")
+    available = st.radio("Can you play?", ["Yes", "No"])
+    if st.button("Submit"):
+        if name.strip():
+            new_entry = pd.DataFrame([{
+                "timestamp": datetime.now(TIMEZONE).isoformat(),
+                "name": name.strip(),
+                "available": available == "Yes"
+            }])
+            df = pd.concat([df, new_entry], ignore_index=True)
+            df.to_csv(DATA_FILE, index=False)
+            st.success("Your response has been recorded!")
+        else:
+            st.warning("Please enter your name.")
+
+    # Display results
+    st.header("Sign-ups")
+    available_df = df[df["available"] == True]
+    unavailable_df = df[df["available"] == False]
 
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("✅ Available")
-        if not available_df.empty:
-            for _, row in available_df.iterrows():
-                st.write(f"- **{row['name']}**")
-        else:
-            st.write("_No one available yet_")
+        for n in available_df["name"]:
+            st.write(f"- **{n}**")
 
     with col2:
         st.subheader("❌ Not available")
-        if not unavailable_df.empty:
-            for _, row in unavailable_df.iterrows():
-                st.write(f"- **{row['name']}**")
-        else:
-            st.write("_No one unavailable yet_")
+        for n in unavailable_df["name"]:
+            st.write(f"- **{n}**")
 
-st.write("---")
+# =====================================================
+# TAB 2 — ADMIN PAGE
+# =====================================================
+with tab2:
+    st.markdown("<h1>🔒 Admin Page</h1>", unsafe_allow_html=True)
+    st.write("Enter admin name to access controls:")
 
+    admin_name = st.text_input("Admin name")
+    if admin_name.strip().lower() == "becky":
+        st.success("Welcome, Becky! 👋")
+
+        # Change event date
+        st.subheader("🗓 Change Event Date")
+        new_date = st.date_input("Select new date", value=date.today())
+        if st.button("Save New Date"):
+            pretty_date = new_date.strftime("%A, %B %d, %Y")
+            EVENT_FILE.write_text(pretty_date)
+            st.success(f"Event date updated to {pretty_date}")
+
+        # Reset signups
+        st.subheader("🧹 Reset Sign-ups")
+        if st.button("Clear all sign-ups"):
+            DATA_FILE.write_text("")  # wipe file
+            st.success("All sign-ups cleared!")
+
+    elif admin_name:
+        st.error("Access denied.")

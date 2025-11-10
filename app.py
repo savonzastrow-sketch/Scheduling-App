@@ -39,14 +39,27 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------
-# MAIN APP TABS
+# Track active tab in session state
 # -----------------------
-tab1, tab2 = st.tabs(["📋 Sign-up", "🔒 Admin"])
+tabs = ["📋 Sign-up", "🔒 Admin"]
+selected_tab = st.session_state.get("selected_tab", tabs[0])
+selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed")
+
+# Detect tab switch
+previous_tab = st.session_state.get("previous_tab", None)
+if previous_tab != selected_tab:
+    st.session_state["previous_tab"] = selected_tab
+    # If user switches *to* the Sign-up tab, rerun to refresh data
+    if selected_tab == "📋 Sign-up":
+        st.rerun()
+
+st.session_state["selected_tab"] = selected_tab
 
 # =====================================================
 # TAB 1 — SIGN-UP PAGE
 # =====================================================
-with tab1:
+if selected_tab == "📋 Sign-up":
+    # --- SIGN-UP PAGE ---
     st.markdown(f"<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
     st.markdown(f"<p>Event date: <b>{EVENT_DATE_STR}</b></p>", unsafe_allow_html=True)
     st.write("Please enter your name and let us know if you can play.")
@@ -98,10 +111,11 @@ with tab1:
 # =====================================================
 # TAB 2 — ADMIN PAGE
 # =====================================================
-with tab2:
+elif selected_tab == "🔒 Admin":
+    # --- ADMIN PAGE ---
     st.markdown("<h1>🔒 Admin Page</h1>", unsafe_allow_html=True)
     st.write("Enter admin name to access controls:")
-
+    
     admin_name = st.text_input("Admin name")
     if admin_name.strip().lower() == "becky":
         st.success("Welcome, Becky! 👋")

@@ -52,8 +52,11 @@ with tab1:
     st.write("Please enter your name and let us know if you can play.")
 
     # Load data
-    if DATA_FILE.exists():
-        df = pd.read_csv(DATA_FILE)
+    if DATA_FILE.exists() and DATA_FILE.stat().st_size > 0:
+        try:
+            df = pd.read_csv(DATA_FILE)
+        except pd.errors.EmptyDataError:
+            df = pd.DataFrame(columns=["timestamp", "name", "available"])
     else:
         df = pd.DataFrame(columns=["timestamp", "name", "available"])
 

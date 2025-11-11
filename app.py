@@ -83,19 +83,48 @@ if selected_tab == "📋 Sign-up":
 
     # Form
     name = st.text_input("Your name")
-    available = st.radio("Can you play?", ["Yes", "No"])
+    available = st.radio("Can you play?", ["Yes", "No"], horizontal=True)
+
     if st.button("Submit"):
-        if name.strip():
-            new_entry = pd.DataFrame([{
-                "timestamp": datetime.now(TIMEZONE).isoformat(),
-                "name": name.strip(),
-                "available": available == "Yes"
-            }])
-            df = pd.concat([df, new_entry], ignore_index=True)
-            df.to_csv(DATA_FILE, index=False)
-            st.success("Your response has been recorded!")
+        if not name.strip():
+            st.warning("Please enter your name before submitting.")
         else:
-            st.warning("Please enter your name.")
+            name = name.strip()
+            # Check for duplicate
+            if name in df["name"].values:
+                st.warning(f"The name **{name}** has already submitted a response.")
+                change = st.radio(
+                    "Would you like to change your selection?",
+                    ["No", "Yes"],
+                    horizontal=True,
+                    key="change_response"
+                )
+                if change == "Yes":
+                    # Remove old entry
+                    df = df[df["name"] != name]
+                    # Add new entry
+                    new_row = {
+                        "timestamp": datetime.now(),
+                        "name": name,
+                        "available": available == "Yes"
+                    }
+                    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                    df.to_csv(DATA_FILE, index=False)
+                    st.success(f"Updated! {name}'s response has been changed to '{available}'.")
+                    st.rerun()
+                else:
+                    st.info("No changes made.")
+            else:
+                # Normal case (new name)
+                new_row = {
+                    "timestamp": datetime.now(),
+                    "name": name,
+                    "available": available == "Yes"
+                }
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                df.to_csv(DATA_FILE, index=False)
+                st.success(f"Thanks, {name}! Your response has been recorded.")
+                st.rerun()
 
     # Display results
     st.header("Sign-ups")

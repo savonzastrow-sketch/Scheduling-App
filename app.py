@@ -81,64 +81,75 @@ if selected_tab == "📋 Sign-up":
     else:
         df = pd.DataFrame(columns=["timestamp", "name", "available"])
 
-    # Form
-    name = st.text_input("Your name")
-    available = st.radio("Can you play?", ["Yes", "No"], horizontal=True)
+# --- Sign-up Form ---
+name = st.text_input("Your name")
+available = st.radio("Can you play?", ["Yes", "No"], horizontal=True)
 
-    # Initialize state variables
-    if "duplicate_name" not in st.session_state:
-        st.session_state["duplicate_name"] = None
+# Initialize session state
+if "duplicate_name" not in st.session_state:
+    st.session_state["duplicate_name"] = None
+if "pending_change" not in st.session_state:
+    st.session_state["pending_change"] = False
+if "previous_available" not in st.session_state:
+    st.session_state["previous_available"] = None
 
-    if "pending_change" not in st.session_state:
-        st.session_state["pending_change"] = False
+# Handle form submission
+if st.button("Submit"):
+    if not name.strip():
+        st.warning("Please enter your name before submitting.")
+    else:
+        name = name.strip()
+        # Save the current choice in case we need it after rerun
+        st.session_state["previous_available"] = available
 
-    # When the user clicks Submit
-    if st.button("Submit"):
-        if not name.strip():
-            st.warning("Please enter your name before submitting.")
+        # Check for duplicate name
+        if name in df["name"].values:
+            st.session_state["duplicate_name"] = name
+            st.session_state["pending_change"] = True
+            st.warning(f"The name **{name}** has already submitted a response.")
         else:
-            name = name.strip()
-            if name in df["name"].values:
-                # Store duplicate name and mark pending change
-                st.session_state["duplicate_name"] = name
-                st.session_state["pending_change"] = True
-                st.warning(f"The name **{name}** has already submitted a response.")
-            else:
-                # Add new entry
-                new_row = {"timestamp": datetime.now(), "name": name, "available": available == "Yes"}
-                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-                df.to_csv(DATA_FILE, index=False)
-                st.success(f"Thanks, {name}! Your response has been recorded.")
-                st.session_state["duplicate_name"] = None
-                st.session_state["pending_change"] = False
-                st.rerun()
-
-    # Handle duplicate name change prompt
-    if st.session_state["pending_change"]:
-        name = st.session_state["duplicate_name"]
-        st.info(f"{name} already exists. Would you like to change your selection?")
-        change = st.radio(
-            "Change response?",
-            ["No", "Yes"],
-            horizontal=True,
-            key="change_response"
-        )
-
-        if change == "Yes":
-            # Remove the old entry and replace it
-            df = df[df["name"] != name]
             new_row = {"timestamp": datetime.now(), "name": name, "available": available == "Yes"}
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             df.to_csv(DATA_FILE, index=False)
-            st.success(f"Updated! {name}'s response has been changed to '{available}'.")
-            st.session_state["pending_change"] = False
+            st.success(f"Thanks, {name}! Your response has been recorded.")
             st.session_state["duplicate_name"] = None
+            st.session_state["pending_change"] = False
             st.rerun()
 
-        elif change == "No":
-            st.info("No changes made.")
-            st.session_state["pending_change"] = False
-            st.session_state["duplicate_name"] = None
+# If a duplicate was found, handle the change logic
+if st.session_state["pending_change"]:
+    name = st.session_state["duplicate_name"]
+    st.info(f"**{name}** already exists. Would you like to change your selection?")
+    change = st.radio("Change response?", ["No", "Yes"], horizontal=True, key="change_response")
+
+    if change == "Yes":
+        # Use the stored available choice (the user’s current radio selection)
+        new_available = st.session_state.get("previous_available", available)
+
+        # Remove the old record
+        df = df[df["name"] != name]
+
+        # Add updated record
+        new_row = {
+            "timestamp": datetime.now(),
+            "name": name,
+            "available": new_available == "Yes"
+        }
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df.to_csv(DATA_FILE, index=False)
+
+        # Reset state
+        st.success(f"Updated! {name}'s response has been changed to '{new_available}'.")
+        st.session_state["pending_change"] = False
+        st.session_state["duplicate_name"] = None
+        st.session_state["previous_available"] = None
+        st.rerun()
+
+    elif change == "No":
+        st.info("No changes made.")
+        st.session_state["pending_change"] = False
+        st.session_state["duplicate_name"] = None
+        st.session_state["previous_available"] = None
 
     # Display results
     st.header("Sign-ups")

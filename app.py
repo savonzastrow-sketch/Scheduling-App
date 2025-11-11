@@ -85,46 +85,60 @@ if selected_tab == "📋 Sign-up":
     name = st.text_input("Your name")
     available = st.radio("Can you play?", ["Yes", "No"], horizontal=True)
 
+    # Initialize state variables
+    if "duplicate_name" not in st.session_state:
+        st.session_state["duplicate_name"] = None
+
+    if "pending_change" not in st.session_state:
+        st.session_state["pending_change"] = False
+
+    # When the user clicks Submit
     if st.button("Submit"):
         if not name.strip():
             st.warning("Please enter your name before submitting.")
         else:
             name = name.strip()
-            # Check for duplicate
             if name in df["name"].values:
+                # Store duplicate name and mark pending change
+                st.session_state["duplicate_name"] = name
+                st.session_state["pending_change"] = True
                 st.warning(f"The name **{name}** has already submitted a response.")
-                change = st.radio(
-                    "Would you like to change your selection?",
-                    ["No", "Yes"],
-                    horizontal=True,
-                    key="change_response"
-                )
-                if change == "Yes":
-                    # Remove old entry
-                    df = df[df["name"] != name]
-                    # Add new entry
-                    new_row = {
-                        "timestamp": datetime.now(),
-                        "name": name,
-                        "available": available == "Yes"
-                    }
-                    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-                    df.to_csv(DATA_FILE, index=False)
-                    st.success(f"Updated! {name}'s response has been changed to '{available}'.")
-                    st.rerun()
-                else:
-                    st.info("No changes made.")
             else:
-                # Normal case (new name)
-                new_row = {
-                    "timestamp": datetime.now(),
-                    "name": name,
-                    "available": available == "Yes"
-                }
+                # Add new entry
+                new_row = {"timestamp": datetime.now(), "name": name, "available": available == "Yes"}
                 df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 df.to_csv(DATA_FILE, index=False)
                 st.success(f"Thanks, {name}! Your response has been recorded.")
+                st.session_state["duplicate_name"] = None
+                st.session_state["pending_change"] = False
                 st.rerun()
+
+    # Handle duplicate name change prompt
+    if st.session_state["pending_change"]:
+        name = st.session_state["duplicate_name"]
+        st.info(f"{name} already exists. Would you like to change your selection?")
+        change = st.radio(
+            "Change response?",
+            ["No", "Yes"],
+            horizontal=True,
+            key="change_response"
+        )
+
+        if change == "Yes":
+            # Remove the old entry and replace it
+            df = df[df["name"] != name]
+            new_row = {"timestamp": datetime.now(), "name": name, "available": available == "Yes"}
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            df.to_csv(DATA_FILE, index=False)
+            st.success(f"Updated! {name}'s response has been changed to '{available}'.")
+            st.session_state["pending_change"] = False
+            st.session_state["duplicate_name"] = None
+            st.rerun()
+
+        elif change == "No":
+            st.info("No changes made.")
+            st.session_state["pending_change"] = False
+            st.session_state["duplicate_name"] = None
 
     # Display results
     st.header("Sign-ups")

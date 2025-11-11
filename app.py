@@ -70,7 +70,7 @@ if selected_tab == "📋 Sign-up":
     st.markdown(f"<p>Event location: <b>{EVENT_LOCATION}</b></p>", unsafe_allow_html=True)
     st.write("Please enter your name and let us know if you can play.")
 
-    # --- Load data safely (no cache) ---
+    # --- Load data safely ---
     if DATA_FILE.exists() and DATA_FILE.stat().st_size > 0:
         try:
             df = pd.read_csv(DATA_FILE)
@@ -105,32 +105,23 @@ if selected_tab == "📋 Sign-up":
             if name in df["name"].values:
                 st.warning(f"The name **{name}** already has a response.")
                 change = st.radio(
-                    "Would you like to change your response?",
+                    "Would you like to clear your previous response and start over?",
                     ["No", "Yes"],
                     horizontal=True,
                     key="change_prompt"
                 )
 
                 if change == "Yes":
-                    # Remove the old record first
+                    # Remove their old entry
                     df = df[df["name"] != name].copy()
-                    df.reset_index(drop=True, inplace=True)
-
-                    # Add the updated entry
-                    new_row = {
-                        "timestamp": datetime.now(),
-                        "name": name,
-                        "available": available == "Yes"
-                    }
-                    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                     df.to_csv(DATA_FILE, index=False)
-                    st.success(f"{name}'s response has been updated to '{available}'.")
+                    st.success(f"{name}'s previous entry has been cleared. Please re-enter your response below.")
                     st.rerun()
 
                 elif change == "No":
                     st.info("No changes made.")
             else:
-                # New entry
+                # Add new entry
                 new_row = {
                     "timestamp": datetime.now(),
                     "name": name,

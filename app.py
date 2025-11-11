@@ -52,11 +52,10 @@ tabs = ["📋 Sign-up", "🔒 Admin"]
 selected_tab = st.session_state.get("selected_tab", tabs[0])
 selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed")
 
-# Detect tab switch
+# Detect tab switch and refresh sign-up data when returning
 previous_tab = st.session_state.get("previous_tab", None)
 if previous_tab != selected_tab:
     st.session_state["previous_tab"] = selected_tab
-    # If user switches *to* the Sign-up tab, rerun to refresh data
     if selected_tab == "📋 Sign-up":
         st.rerun()
 
@@ -66,13 +65,12 @@ st.session_state["selected_tab"] = selected_tab
 # TAB 1 — SIGN-UP PAGE
 # =====================================================
 if selected_tab == "📋 Sign-up":
-    # --- SIGN-UP PAGE ---
     st.markdown(f"<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
     st.markdown(f"<p>Event date: <b>{EVENT_DATE_STR}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p>Event location: <b>{EVENT_LOCATION}</b></p>", unsafe_allow_html=True)
     st.write("Please enter your name and let us know if you can play.")
 
-    # Load data
+    # --- Load data safely (no cache) ---
     if DATA_FILE.exists() and DATA_FILE.stat().st_size > 0:
         try:
             df = pd.read_csv(DATA_FILE)
@@ -81,107 +79,72 @@ if selected_tab == "📋 Sign-up":
     else:
         df = pd.DataFrame(columns=["timestamp", "name", "available"])
 
-# --- Sign-up Form ---
-with st.form("signup_form", clear_on_submit=False):
+    # --- Display current sign-ups ---
+    st.markdown("### 😄 Available")
+    for n in df[df["available"] == True]["name"].tolist():
+        st.markdown(f"- {n}")
+
+    st.markdown("### 🙁 Not Available")
+    for n in df[df["available"] == False]["name"].tolist():
+        st.markdown(f"- {n}")
+
+    st.divider()
+
+    # --- Sign-up form ---
+    st.markdown("### Sign Up Below")
+
     name = st.text_input("Your name")
     available = st.radio("Can you play?", ["Yes", "No"], horizontal=True)
-    submit = st.form_submit_button("Submit")
+    submit = st.button("Submit")
 
-# Initialize state variables
-if "duplicate_name" not in st.session_state:
-    st.session_state["duplicate_name"] = None
-if "pending_change" not in st.session_state:
-    st.session_state["pending_change"] = False
-if "previous_available" not in st.session_state:
-    st.session_state["previous_available"] = None
-
-# Handle form submission
-if submit:
-    if not name.strip():
-        st.warning("Please enter your name before submitting.")
-    else:
-        name = name.strip()
-        st.session_state["previous_available"] = available
-
-        if name in df["name"].values:
-            # Duplicate detected
-            st.session_state["duplicate_name"] = name
-            st.session_state["pending_change"] = True
-            st.warning(f"The name **{name}** has already submitted a response.")
+    if submit:
+        if not name.strip():
+            st.warning("Please enter your name before submitting.")
         else:
-            # Normal new entry
-            new_row = {"timestamp": datetime.now(), "name": name, "available": available == "Yes"}
-            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            df.to_csv(DATA_FILE, index=False)
-            st.success(f"Thanks, {name}! Your response has been recorded.")
-            st.session_state["duplicate_name"] = None
-            st.session_state["pending_change"] = False
-            st.rerun()
+            name = name.strip()
+            if name in df["name"].values:
+                st.warning(f"The name **{name}** already has a response.")
+                change = st.radio(
+                    "Would you like to change your response?",
+                    ["No", "Yes"],
+                    horizontal=True,
+                    key="change_prompt"
+                )
 
-# Handle duplicate logic outside the form
-if st.session_state["pending_change"]:
-    name = st.session_state["duplicate_name"]
-    st.info(f"**{name}** already exists. Would you like to change your selection?")
-    change = st.radio(
-        "Change response?",
-        ["No", "Yes"],
-        horizontal=True,
-        key="change_response"
-    )
+                if change == "Yes":
+                    # Remove the old record first
+                    df = df[df["name"] != name].copy()
+                    df.reset_index(drop=True, inplace=True)
 
-    if change == "Yes":
-        # Retrieve the last chosen availability
-        new_available = st.session_state.get("previous_available", "No")
+                    # Add the updated entry
+                    new_row = {
+                        "timestamp": datetime.now(),
+                        "name": name,
+                        "available": available == "Yes"
+                    }
+                    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                    df.to_csv(DATA_FILE, index=False)
+                    st.success(f"{name}'s response has been updated to '{available}'.")
+                    st.rerun()
 
-        # --- Critical part: clear old entry first ---
-        df = df[df["name"] != name].copy()
-        df.reset_index(drop=True, inplace=True)
-
-        # --- Then append updated entry ---
-        new_row = {
-            "timestamp": datetime.now(),
-            "name": name,
-            "available": new_available == "Yes"
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        df.to_csv(DATA_FILE, index=False)
-
-        # Reset session state & refresh
-        st.success(f"Updated! {name}'s response has been changed to '{new_available}'.")
-        st.session_state["pending_change"] = False
-        st.session_state["duplicate_name"] = None
-        st.session_state["previous_available"] = None
-        st.rerun()
-
-    elif change == "No":
-        st.info("No changes made.")
-        st.session_state["pending_change"] = False
-        st.session_state["duplicate_name"] = None
-        st.session_state["previous_available"] = None
-
-    # Display results
-    st.header("Sign-ups")
-
-    available_df = df[df["available"] == True]
-    unavailable_df = df[df["available"] == False]
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("<h3 style='font-size:22px; text-align:left; margin-left:4px;'>😄 Available</h3>", unsafe_allow_html=True)
-        for n in available_df["name"]:
-            st.write(f"- **{n}**")
-
-    with col2:
-        st.markdown("<h3 style='font-size:22px; text-align:left; margin-left:4px;'>🙁 Not available</h3>", unsafe_allow_html=True)
-        for n in unavailable_df["name"]:
-            st.write(f"- **{n}**")
+                elif change == "No":
+                    st.info("No changes made.")
+            else:
+                # New entry
+                new_row = {
+                    "timestamp": datetime.now(),
+                    "name": name,
+                    "available": available == "Yes"
+                }
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                df.to_csv(DATA_FILE, index=False)
+                st.success(f"Thanks, {name}! Your response has been recorded.")
+                st.rerun()
 
 # =====================================================
 # TAB 2 — ADMIN PAGE
 # =====================================================
 elif selected_tab == "🔒 Admin":
-    # --- ADMIN PAGE ---
     st.markdown("<h1>🔒 Admin Page</h1>", unsafe_allow_html=True)
     st.write("Enter admin name to access controls:")
     

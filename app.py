@@ -39,6 +39,14 @@ st.markdown("""
     h1 { font-size: 32px !important; text-align: center; }
     h2 { font-size: 28px !important; text-align: center; }
     p, div, label, .stMarkdown { font-size: 18px !important; line-height: 1.6; }
+
+    /* Toggle color styling */
+    div[data-testid="stThumb"] {
+        background-color: #d3d3d3 !important; /* gray when off */
+    }
+    div[data-testid="stThumb"][aria-checked="true"] {
+        background-color: #22c55e !important; /* green when ON */
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -80,7 +88,7 @@ if selected_tab == "📋 Sign-up":
     st.markdown("<h1>🀄 Mahjong - Sign-up</h1>", unsafe_allow_html=True)
     st.markdown(f"<p>Event date: <b>{EVENT_DATE_STR}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p>Event location: <b>{EVENT_LOCATION}</b></p>", unsafe_allow_html=True)
-    st.write("Add your name below and indicate whether you can play.")
+    st.write("Add your name below and toggle your availability.")
 
     df = load_data()
 
@@ -110,10 +118,10 @@ if selected_tab == "📋 Sign-up":
     # --- Editable list of players ---
     if not df.empty:
         st.divider()
-        st.markdown("### 😄 Availability List")
+        st.markdown("### 😄 Player Availability")
 
         for i, row in df.iterrows():
-            col1, col2 = st.columns([2, 1])
+            col1, col2, col3 = st.columns([2, 1, 1])
             with col1:
                 st.markdown(f"**{row['name']}**")
             with col2:
@@ -127,21 +135,12 @@ if selected_tab == "📋 Sign-up":
                     df.loc[i, "available"] = toggle
                     df.loc[i, "timestamp"] = datetime.now().astimezone(TIMEZONE)
                     save_data(df)
-
-        # --- Summary Lists ---
-        st.divider()
-        available_df = df[df["available"] == True]
-        unavailable_df = df[df["available"] == False]
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("<h3 style='font-size:22px; text-align:left;'>😄 Available</h3>", unsafe_allow_html=True)
-            for n in available_df["name"]:
-                st.write(f"- **{n}**")
-        with col2:
-            st.markdown("<h3 style='font-size:22px; text-align:left;'>🙁 Not available</h3>", unsafe_allow_html=True)
-            for n in unavailable_df["name"]:
-                st.write(f"- **{n}**")
+            with col3:
+                # Friendly emojis instead of check/X
+                if toggle:
+                    st.markdown("<span style='color:green; font-weight:bold;'>😄 Available</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<span style='color:gray; font-weight:bold;'>🙁 Not available</span>", unsafe_allow_html=True)
 
 # =====================================================
 # TAB 2 — ADMIN PAGE

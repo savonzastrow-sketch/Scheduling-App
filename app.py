@@ -3,8 +3,6 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
-import tempfile
-import os
 
 # -----------------------
 # CONFIG
@@ -15,48 +13,6 @@ DATA_FILE = DATA_DIR / "availability.csv"
 EVENT_FILE = DATA_DIR / "event_date.txt"
 EVENT_LOCATION_FILE = DATA_DIR / "event_location.txt"
 DATA_DIR.mkdir(exist_ok=True)
-
-# -----------------------
-# Helpers: safe read / write
-# -----------------------
-CSV_COLUMNS = ["timestamp", "name", "available"]
-
-def load_data():
-    """Always read the CSV fresh; return DataFrame with correct columns."""
-    if DATA_FILE.exists() and DATA_FILE.stat().st_size > 0:
-        try:
-            df = pd.read_csv(DATA_FILE)
-            # ensure columns exist
-            for c in CSV_COLUMNS:
-                if c not in df.columns:
-                    df[c] = pd.NA
-            return df[CSV_COLUMNS].copy()
-        except pd.errors.EmptyDataError:
-            return pd.DataFrame(columns=CSV_COLUMNS)
-        except Exception:
-            # fallback to empty
-            return pd.DataFrame(columns=CSV_COLUMNS)
-    else:
-        return pd.DataFrame(columns=CSV_COLUMNS)
-
-def atomic_write_df(df: pd.DataFrame, path: Path):
-    """Write DataFrame to CSV atomically and ensure headers are present."""
-    # Ensure columns order
-    df = df.copy()
-    for c in CSV_COLUMNS:
-        if c not in df.columns:
-            df[c] = pd.NA
-    df = df[CSV_COLUMNS]
-    # write to temp then replace
-    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent))
-    os.close(fd)
-    try:
-        df.to_csv(tmp_path, index=False)
-        os.replace(tmp_path, path)
-    except Exception:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        raise
 
 # -----------------------
 # Load or initialize event date & location
@@ -74,40 +30,50 @@ else:
     EVENT_LOCATION_FILE.write_text(EVENT_LOCATION)
 
 # -----------------------
-# PAGE SETUP & STYLES
+# PAGE SETUP
 # -----------------------
 st.set_page_config(page_title="🀄 Mahjong Sign-up", layout="centered")
+
+# -----------------------
+# SAFE SESSION INITIALIZATION
+# -----------------------
+if "session_initialized" not in st.session_state:
+    st.session_state.update({
+        "duplicate_name": None,
+        "pending_change": False,
+        "previous_available": None,
+        "signup_name": "",
+        "selected_tab": "📋 Sign-up",
+        "previous_tab": None
+    })
+    st.session_state["session_initialized"] = True
+
+# -----------------------
+# STYLES
+# -----------------------
 st.markdown("""
     <style>
     h1 { font-size: 32px !important; text-align: center; }
     h2 { font-size: 28px !important; text-align: center; }
+    h3 { font-size: 22px !important; text-align: left; margin-left: 4px; }
     p, div, label, .stMarkdown { font-size: 18px !important; line-height: 1.6; }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------
-# Tab navigation (radio so we can detect change)
+# TABS (SIGN-UP / ADMIN)
 # -----------------------
 tabs = ["📋 Sign-up", "🔒 Admin"]
-selected_tab = st.session_state.get("selected_tab", tabs[0])
 selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed")
 
+# Detect tab switch and refresh sign-up data when returning
 previous_tab = st.session_state.get("previous_tab", None)
 if previous_tab != selected_tab:
     st.session_state["previous_tab"] = selected_tab
     if selected_tab == "📋 Sign-up":
         st.rerun()
-st.session_state["selected_tab"] = selected_tab
 
-# Safe initialization of session variables
-for key, default in {
-    "duplicate_name": None,
-    "pending_change": False,
-    "previous_available": None,
-    "signup_name": ""
-}.items():
-    if key not in st.session_state:
-        st.session_state[key] = default
+st.session_state["selected_tab"] = selected_tab
 
 # =====================================================
 # TAB 1 — SIGN-UP PAGE
@@ -118,90 +84,74 @@ if selected_tab == "📋 Sign-up":
     st.markdown(f"<p>Event location: <b>{EVENT_LOCATION}</b></p>", unsafe_allow_html=True)
     st.write("Please enter your name and let us know if you can play.")
 
-    # Load fresh data
-    df = load_data()
-
-    # Normalize 'available' column to booleans where possible
-    if "available" in df.columns:
-        df["available"] = df["available"].map({True: True, False: False, "True": True, "False": False}).fillna(False)
-
-    # Show lists first (always)
-    st.markdown("### 😄 Available")
-    avail_list = df[df["available"] == True]["name"].astype(str).tolist()
-    if avail_list:
-        for n in avail_list:
-            st.markdown(f"- {n}")
+    # --- Load data safely ---
+    if DATA_FILE.exists() and DATA_FILE.stat().st_size > 0:
+        try:
+            df = pd.read_csv(DATA_FILE)
+        except pd.errors.EmptyDataError:
+            df = pd.DataFrame(columns=["timestamp", "name", "available"])
     else:
-        st.markdown("_No one yet_")
+        df = pd.DataFrame(columns=["timestamp", "name", "available"])
 
-    st.markdown("### 🙁 Not Available")
-    notavail_list = df[df["available"] == False]["name"].astype(str).tolist()
-    if notavail_list:
-        for n in notavail_list:
+    # --- Display current sign-ups ---
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("<h3>😄 Available</h3>", unsafe_allow_html=True)
+        available_df = df[df["available"] == True]
+        for n in available_df["name"].tolist():
             st.markdown(f"- {n}")
-    else:
-        st.markdown("_No one yet_")
+
+    with col2:
+        st.markdown("<h3>🙁 Not Available</h3>", unsafe_allow_html=True)
+        unavailable_df = df[df["available"] == False]
+        for n in unavailable_df["name"].tolist():
+            st.markdown(f"- {n}")
 
     st.divider()
 
-    # --- Sign-up form (use named keys so we can clear programmatically) ---
+    # --- Sign-up form ---
     st.markdown("### Sign Up Below")
-    if "signup_name" not in st.session_state:
-        st.session_state["signup_name"] = ""
-    name = st.text_input("Your name", key="signup_name")
-    available = st.radio("Can you play?", ["Yes", "No"], horizontal=True, key="signup_available")
+
+    name = st.text_input("Your name")
+    available = st.radio("Can you play?", ["Yes", "No"], horizontal=True)
     submit = st.button("Submit")
 
-    # --- Submission handling ---
     if submit:
-        if not name or not name.strip():
+        if not name.strip():
             st.warning("Please enter your name before submitting.")
         else:
-            name_clean = name.strip()
-            # reload data just before write to avoid race
-            df = load_data()
-            # normalize available column again
-            df["available"] = df["available"].map({True: True, False: False, "True": True, "False": False}).fillna(False)
-
-            if name_clean in df["name"].astype(str).values:
-                # Duplicate exists; ask to clear and start over
-                st.warning(f"The name **{name_clean}** already has a response.")
-                # choice widget
+            name = name.strip()
+            if name in df["name"].values:
+                st.warning(f"The name **{name}** already has a response.")
                 change = st.radio(
                     "Would you like to clear your previous response and start over?",
                     ["No", "Yes"],
                     horizontal=True,
-                    key="change_prompt_sign"
+                    key="change_prompt"
                 )
 
                 if change == "Yes":
-                    # Remove old record(s)
-                    df2 = df[df["name"].astype(str) != name_clean].copy()
-                    # Ensure columns present and write atomically (even if empty)
-                    atomic_write_df(df2, DATA_FILE)
-
-                    # Clear the input field so user can re-enter
+                    # Remove their old entry completely
+                    df = df[df["name"] != name].copy()
+                    df.to_csv(DATA_FILE, index=False)
+                    st.success(f"{name}'s previous entry has been cleared. Please re-enter your response below.")
                     st.session_state["signup_name"] = ""
+                    st.rerun()
 
-                    st.success(f"{name_clean}'s previous entry has been cleared. Please re-enter your response.")
-                    # reload the page so lists update and the cleared state is visible
-                    st.experimental_rerun()
-
-                else:
+                elif change == "No":
                     st.info("No changes made.")
             else:
                 # Add new entry
                 new_row = {
-                    "timestamp": datetime.now(TIMEZONE).isoformat(),
-                    "name": name_clean,
-                    "available": True if available == "Yes" else False
+                    "timestamp": datetime.now(),
+                    "name": name,
+                    "available": available == "Yes"
                 }
-                df2 = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-                atomic_write_df(df2, DATA_FILE)
-                st.success(f"Thanks, {name_clean}! Your response has been recorded.")
-                # clear the text input for convenience
-                st.session_state["signup_name"] = ""
-                st.experimental_rerun()
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                df.to_csv(DATA_FILE, index=False)
+                st.success(f"Thanks, {name}! Your response has been recorded.")
+                st.rerun()
 
 # =====================================================
 # TAB 2 — ADMIN PAGE
@@ -232,8 +182,7 @@ elif selected_tab == "🔒 Admin":
         # Reset signups
         st.subheader("🧹 Reset Sign-ups")
         if st.button("Clear all sign-ups"):
-            # recreate a CSV with headers only
-            atomic_write_df(pd.DataFrame(columns=CSV_COLUMNS), DATA_FILE)
+            DATA_FILE.write_text("")  # wipe file
             st.success("All sign-ups cleared!")
 
     elif admin_name:

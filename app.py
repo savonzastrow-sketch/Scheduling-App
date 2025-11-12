@@ -40,14 +40,19 @@ st.markdown("""
     h2 { font-size: 28px !important; text-align: center; }
     p, div, label, .stMarkdown { font-size: 18px !important; line-height: 1.6; }
 
-    /* Toggle color styling */
-    div[data-testid="stThumb"] {
-        background-color: #d3d3d3 !important; /* gray when off */
-    }
-    div[data-testid="stThumb"][aria-checked="true"] {
-        background-color: #22c55e !important; /* green when ON */
-    }
-    </style>
+     <script>
+        // Wait for toggles to render
+        const observer = new MutationObserver(() => {
+            document.querySelectorAll('[data-testid="stThumb"]').forEach(el => {
+                if (el.getAttribute('aria-checked') === 'true') {
+                    el.style.backgroundColor = '#22c55e';   // ✅ green when ON
+                } else {
+                    el.style.backgroundColor = '#d3d3d3';   // ⚪ gray when OFF
+                }
+            });
+        });
+        observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+        </script>
 """, unsafe_allow_html=True)
 
 # =====================================================

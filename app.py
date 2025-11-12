@@ -106,49 +106,97 @@ if selected_tab == "📋 Sign-up":
             st.success(f"{new_name} added to the list.")
             st.rerun()
 
-    # Display player list with custom toggle buttons
+    # Display player list in a responsive table layout
     if not df.empty:
         st.markdown("---")
         st.subheader("Player Availability")
 
+        # Begin HTML table
+        table_html = """
+        <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        td {
+            padding: 8px 6px;
+            vertical-align: middle;
+            text-align: left;
+            font-size: 18px;
+        }
+        td:nth-child(2) {
+            text-align: center;
+        }
+        td:nth-child(3) {
+            text-align: right;
+        }
+        button {
+            border: none;
+            border-radius: 12px;
+            padding: 6px 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .avail {
+            background-color: #22c55e;
+            color: white;
+        }
+        .notavail {
+            background-color: #d3d3d3;
+            color: #333;
+        }
+        .trash {
+            background: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        </style>
+        <table>
+        """
+
         for idx, row in df.iterrows():
             name = row["name"]
             available = row["available"]
+            button_class = "avail" if available else "notavail"
+            button_label = "😄 Available" if available else "🙁 Not Available"
 
-            col1, col2, col3 = st.columns([2, 2, 2])
-            with col1:
-                st.write(f"**{name}**")
-            with col2:
-                # Custom toggle button
-                if available:
-                    button_label = "😄 Available"
-                    button_style = (
-                        "background-color:#22c55e;color:white;border:none;"
-                        "border-radius:12px;padding:6px 16px;font-weight:600;"
-                    )
-                else:
-                    button_label = "🙁 Not Available"
-                    button_style = (
-                        "background-color:#d3d3d3;color:#333;border:none;"
-                        "border-radius:12px;padding:6px 16px;font-weight:600;"
-                    )
+            # Build table row with buttons rendered by Streamlit
+            st.markdown(f"""
+                <table style='width:100%;'>
+                    <tr>
+                        <td><b>{name}</b></td>
+                        <td>
+                            <form action="" method="get">
+                                <button name="toggle_{idx}" type="submit" class="{button_class}">
+                                    {button_label}
+                                </button>
+                            </form>
+                        </td>
+                        <td>
+                            <form action="" method="get">
+                                <button name="remove_{idx}" type="submit" class="trash">🗑</button>
+                            </form>
+                        </td>
+                    </tr>
+                </table>
+            """, unsafe_allow_html=True)
 
-                button_html = f"""
-                    <form action="" method="get">
-                        <button name="toggle_{idx}" type="submit" style="{button_style}">
-                            {button_label}
-                        </button>
-                    </form>
-                """
-                if st.button(button_label, key=f"toggle_{idx}", use_container_width=True):
+            # Now handle toggle/remove actions via real Streamlit buttons (hidden)
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                if st.button(f"Toggle_{idx}", key=f"real_toggle_{idx}", help="hidden"):
                     df.loc[idx, "available"] = not available
                     df.to_csv(DATA_FILE, index=False)
                     st.rerun()
-            with col3:
-                if st.button("🗑 Remove", key=f"remove_{idx}"):
+            with c2:
+                if st.button(f"Remove_{idx}", key=f"real_remove_{idx}", help="hidden"):
                     df = df[df["name"] != name]
                     df.to_csv(DATA_FILE, index=False)
                     st.rerun()
+
+        table_html += "</table>"
     else:
         st.info("No players have signed up yet.")
 

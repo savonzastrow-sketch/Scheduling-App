@@ -99,6 +99,16 @@ if previous_tab != selected_tab:
         st.rerun()
 st.session_state["selected_tab"] = selected_tab
 
+# Safe initialization of session variables
+for key, default in {
+    "duplicate_name": None,
+    "pending_change": False,
+    "previous_available": None,
+    "signup_name": ""
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
+
 # =====================================================
 # TAB 1 — SIGN-UP PAGE
 # =====================================================

@@ -96,7 +96,7 @@ previous_tab = st.session_state.get("previous_tab", None)
 if previous_tab != selected_tab:
     st.session_state["previous_tab"] = selected_tab
     if selected_tab == "📋 Sign-up":
-        st.experimental_rerun()
+        st.rerun()
 st.session_state["selected_tab"] = selected_tab
 
 # =====================================================

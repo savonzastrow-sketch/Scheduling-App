@@ -40,12 +40,12 @@ st.markdown("""
     h2 { font-size: 28px !important; text-align: center; }
     p, div, label, .stMarkdown { font-size: 18px !important; line-height: 1.6; }
 
-    /* Custom green toggle when ON */
+    /* Toggle color styling */
     div[data-testid="stThumb"] {
-        background-color: #ff4b4b; /* red by default */
+        background-color: #d3d3d3 !important; /* gray when off */
     }
     div[data-testid="stThumb"][aria-checked="true"] {
-        background-color: #21c55d !important; /* green when ON */
+        background-color: #22c55e !important; /* green when ON */
     }
     </style>
 """, unsafe_allow_html=True)
@@ -136,9 +136,11 @@ if selected_tab == "📋 Sign-up":
                     df.loc[i, "timestamp"] = datetime.now().astimezone(TIMEZONE)
                     save_data(df)
             with col3:
-                status_text = "✅ Available" if toggle else "❌ Not available"
-                color = "green" if toggle else "red"
-                st.markdown(f"<span style='color:{color}; font-weight:bold;'>{status_text}</span>", unsafe_allow_html=True)
+                # Friendly emojis instead of check/X
+                if toggle:
+                    st.markdown("<span style='color:green; font-weight:bold;'>😄 Available</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<span style='color:gray; font-weight:bold;'>🙁 Not available</span>", unsafe_allow_html=True)
 
 # =====================================================
 # TAB 2 — ADMIN PAGE

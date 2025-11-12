@@ -106,18 +106,20 @@ if selected_tab == "📋 Sign-up":
             st.success(f"{new_name} added to the list.")
             st.rerun()
 
-    # Display player list in a responsive table layout
+    # Display player list in a responsive, mobile-friendly layout
     if not df.empty:
         st.markdown("---")
         st.subheader("Player Availability")
 
-        # Add CSS for table layout (mobile-friendly)
+        # Instruction text
+        st.markdown(
+            "<p style='font-size:16px; color:gray;'>Please click the button below to indicate if you are available.</p>",
+            unsafe_allow_html=True
+        )
+
+        # Add CSS for layout and button styles
         st.markdown("""
             <style>
-            .player-table {
-                width: 100%;
-                border-collapse: collapse;
-            }
             .player-row {
                 display: flex;
                 justify-content: space-between;
@@ -149,12 +151,6 @@ if selected_tab == "📋 Sign-up":
                 background-color: #d3d3d3;
                 color: #333;
             }
-            .trash-btn {
-                background: none;
-                border: none;
-                font-size: 20px;
-                cursor: pointer;
-            }
             @media (max-width: 480px) {
                 .player-row {
                     flex-direction: row;
@@ -173,12 +169,12 @@ if selected_tab == "📋 Sign-up":
             </style>
         """, unsafe_allow_html=True)
 
-        # Build table with Streamlit native buttons
+        # Build each row
         for idx, row in df.iterrows():
             name = row["name"]
             available = row["available"]
 
-            col1, col2, col3 = st.columns([2, 2, 1])
+            col1, col2 = st.columns([2, 2])
             with col1:
                 st.markdown(f"<div class='player-name'>{name}</div>", unsafe_allow_html=True)
             with col2:
@@ -192,12 +188,6 @@ if selected_tab == "📋 Sign-up":
                         df.loc[idx, "available"] = True
                         df.to_csv(DATA_FILE, index=False)
                         st.rerun()
-            with col3:
-                if st.button("🗑", key=f"remove_{idx}", help="Remove player"):
-                    df = df[df["name"] != name]
-                    df.to_csv(DATA_FILE, index=False)
-                    st.rerun()
-
 
 # =====================================================
 # TAB 2 — ADMIN PAGE

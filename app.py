@@ -215,6 +215,23 @@ elif selected_tab == "🔒 Admin":
             EVENT_LOCATION_FILE.write_text(new_location.strip())
             st.success(f"Event location updated to {new_location}")
         
+        # Remove specific player
+        st.subheader("🗑 Remove Player")
+        if not df.empty:
+            player_to_remove = st.selectbox(
+                "Select a player to remove",
+                df["name"].tolist(),
+                index=None,
+                placeholder="Choose a player"
+            )
+            if player_to_remove and st.button("Delete Player"):
+                df = df[df["name"] != player_to_remove]
+                df.to_csv(DATA_FILE, index=False)
+                st.success(f"Removed {player_to_remove} from the sign-up list.")
+                st.rerun()
+        else:
+            st.info("No players to remove.")
+
         # Reset signups
         st.subheader("🧹 Reset Sign-ups")
         if st.button("Clear all sign-ups"):
